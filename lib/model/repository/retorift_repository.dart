@@ -12,8 +12,6 @@ class BuddyDatabaseAndServerRepo implements Repository{
 
   ApiClient restClient = ApiClientImpl();
 
-  List<StreamSubscription> subs = [];
-
   bool _hasInternetConnection = false;
 
   late SportsActivityViewModel observer;
@@ -23,6 +21,20 @@ class BuddyDatabaseAndServerRepo implements Repository{
 
   BuddyDatabaseAndServerRepo._internal(){
     initConnectivity();
+    offlineSupport(() async{
+      var dtb = await db.database;
+      offlineDelete(dtb);
+    });
+
+    offlineSupport(() async{
+      var dtb = await db.database;
+      offlineAdd(dtb);
+    });
+
+    offlineSupport(() async{
+      var dtb = await db.database;
+      offlineUpdate(dtb);
+    });
   }
 
 
@@ -69,6 +81,18 @@ class BuddyDatabaseAndServerRepo implements Repository{
         ${SportsActivityFields.id} ${SportsActivityFields.idType}
       )
       ''');
+
+    await db2.execute('''
+      CREATE TABLE syncDelete(
+        ${SportsActivityFields.id} ${SportsActivityFields.idType}
+      )
+      ''');
+
+    await db2.execute('''
+      CREATE TABLE syncUpdate(
+        ${SportsActivityFields.id} ${SportsActivityFields.idType}
+      )
+      ''');
   }
 
   Future<SportsActivity> add(SportsActivity activity) async{
@@ -91,32 +115,15 @@ class BuddyDatabaseAndServerRepo implements Repository{
       var id = await dtb.insert(dbName, map);
       activity.id = BigInt.from(id);
       listState.add(activity);
-      addSync(id);
-      late StreamSubscription subscription;
-      subscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) async {
-        if(result == ConnectivityResult.mobile || result == ConnectivityResult.wifi){
-          var lista = await readSyncTable();
-          for(var element in lista) {
-            activity = await restClient.add(activity);
-            await dtb.delete(dbName, where: '${SportsActivityFields.id} = $element');
-            await dtb.delete("sync", where: '${SportsActivityFields.id} = $element');
-            var body = activity.mapToJson(add: false);
-            await dtb.insert(dbName, body);
-            listState.removeWhere((el) => el.id.toInt() == element);
-            listState.add(activity);
-            observer.notifyListeners();
-            subscription.cancel();
-          }
-        }
-      });
-      subs.add(subscription);
+      addSync(id, "sync");
+
     }
     return activity;
   }
 
-  Future<void> addSync(int id) async{
+  Future<void> addSync(int id, String tableName) async{
     var dtb = await db.database;
-    await dtb.insert("sync", {SportsActivityFields.id: id});
+    await dtb.insert(tableName, {SportsActivityFields.id: id});
   }
 
   Future<List<SportsActivity>> readAll() async{
@@ -134,39 +141,109 @@ class BuddyDatabaseAndServerRepo implements Repository{
 
   @override
   Future<void> delete(BigInt id) async {
+    var dtb = await db.database;
     if(_hasInternetConnection){
       await restClient.delete(id);
-      var dtb = await db.database;
+
       dtb.delete(dbName, where: '${SportsActivityFields.id} = $id');
 
       listState.removeWhere((element) => element.id == id);
     }
     else{
-      throw Exception("No internet connection");
+      await dtb.delete(dbName, where: '${SportsActivityFields.id} = $id');
+      listState.removeWhere((element) => element.id == id);
+      addSync(id.toInt(), "syncDelete");
+    }
+  }
+
+  offlineSupport(Function callback){
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) async {
+      if(result == ConnectivityResult.mobile || result == ConnectivityResult.wifi){
+          await callback();
+          observer.notifyListeners();
+        }
+    });
+  }
+
+  offlineAdd(Database dtb) async{
+    var lista = await readSyncTable("sync");
+    for(var element in lista) {
+      var act = await readById(BigInt.from(element));
+      late SportsActivity activity;
+      while (true) {
+        try {
+          activity = await restClient.add(act).timeout(
+              const Duration(seconds: 5));
+          break;
+        }
+        on TimeoutException catch (_) {}
+      }
+      await dtb.delete(
+          dbName, where: '${SportsActivityFields.id} = $element');
+      var body = activity.mapToJson(add: false);
+      await dtb.insert(dbName, body);
+      listState.removeWhere((el) => el.id.toInt() == element);
+      listState.add(activity);
+    }
+  }
+
+  offlineDelete(Database dtb) async{
+    var lista = await readSyncTable("syncDelete");
+    for(var element in lista) {
+      while (true) {
+        try {
+          await restClient.delete(BigInt.from(element)).timeout(
+              const Duration(seconds: 5));
+          break;
+        }
+        on TimeoutException catch (_) {}
+      }
+    }
+  }
+
+  offlineUpdate(Database dtb) async{
+    var lista = await readSyncTable("syncUpdate");
+    for(var element in lista) {
+      var act = await readById(BigInt.from(element));
+      while (true) {
+        try {
+          await restClient.update(act).timeout(
+              const Duration(seconds: 5));
+          break;
+        }
+        on TimeoutException catch (_) {}
+      }
     }
   }
 
   @override
   Future<SportsActivity> update(SportsActivity sportsActivity) async {
+    var dtb = await db.database;
     if(_hasInternetConnection){
       await restClient.update(sportsActivity);
-      var dtb = await db.database;
       var whr = sportsActivity.mapToJson(add: false);
       await dtb.update(dbName, whr, where: '${SportsActivityFields.id} = ${sportsActivity.id.toInt()}');
 
-      if(listState != null) {
-        for (int i = 0; i < listState.length; i ++) {
-          if(listState[i].id == sportsActivity.id){
-            listState[i].type = sportsActivity.type;
-            listState[i].date = sportsActivity.date;
-            listState[i].closed = sportsActivity.closed;
-            listState[i].location = sportsActivity.location;
-          }
+      for (int i = 0; i < listState.length; i ++) {
+        if(listState[i].id == sportsActivity.id){
+          listState[i].type = sportsActivity.type;
+          listState[i].date = sportsActivity.date;
+          listState[i].closed = sportsActivity.closed;
+          listState[i].location = sportsActivity.location;
         }
       }
     }
     else{
-      throw Exception("No internet connection");
+      await dtb.update(dbName, sportsActivity.mapToJson(add: false), where: '${SportsActivityFields.id} = ${sportsActivity.id}');
+      addSync(sportsActivity.id.toInt(), "syncUpdate");
+      for (int i = 0; i < listState.length; i ++) {
+        if(listState[i].id == sportsActivity.id){
+          listState[i].type = sportsActivity.type;
+          listState[i].date = sportsActivity.date;
+          listState[i].closed = sportsActivity.closed;
+          listState[i].location = sportsActivity.location;
+        }
+      }
     }
     return sportsActivity;
   }
@@ -188,9 +265,10 @@ class BuddyDatabaseAndServerRepo implements Repository{
     return ret;
   }
 
-  Future<List<int>> readSyncTable() async{
+  Future<List<int>> readSyncTable(String tableName) async{
     var dtb = await db.database;
-    var rez = await dtb.query("sync");
+    var rez = await dtb.query(tableName);
+    await dtb.delete(tableName);
     var ret = rez.map((e) => e[SportsActivityFields.id] as int).toList();
     return ret;
   }
