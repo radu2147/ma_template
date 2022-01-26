@@ -60,4 +60,9 @@ class SportsActivity{
         pret: map[SportsActivityFields.pret] as int,
         discount: map[SportsActivityFields.discount] as int
       );
+
+  @override
+  String toString(){
+    return id.toString() + ", " + nume;
+  }
 }

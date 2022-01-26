@@ -13,7 +13,7 @@ class NavBar extends StatelessWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.verified_user),
-            title: const Text('User'),
+            title: const Text('Second screen'),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const SecondScreen()));
 
