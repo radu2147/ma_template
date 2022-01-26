@@ -29,17 +29,8 @@ class ApiClientImpl implements ApiClient{
   @override
   Future<SportsActivity> add(SportsActivity el) async {
     late Response response;
-    try {
-      var elem = el.mapToJson(SportsActivityFields.idServer, add: true);
-      response = await http.post(
-          Uri.parse("${Apis.url}/product"), body: jsonEncode(elem), headers: {'Content-type': 'application/json'}).timeout(const Duration(seconds: 5));
-    }
-    on TimeoutException catch(_){
-      throw Exception("Cannot add element");
-    }
-    catch(e){
-      print(e);
-    }
+    var elem = el.mapToJson(SportsActivityFields.idServer, add: true);
+    response = await http.post(Uri.parse("${Apis.url}/product"), body: jsonEncode(elem), headers: {'Content-type': 'application/json'}).timeout(const Duration(seconds: 5));
     if(response.statusCode != 200){
       throw Exception("Something is wrong");
     }
@@ -71,7 +62,7 @@ class ApiClientImpl implements ApiClient{
         }
       }
       return fin;
-    }on TimeoutException catch(e){
+    }on TimeoutException catch(_){
       throw Exception("Error fetching data from server");
     }
   }

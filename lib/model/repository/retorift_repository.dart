@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:buddy_finder/model/activity.dart';
 import 'package:buddy_finder/model/repository/activity_repository.dart';
@@ -119,16 +120,23 @@ class BuddyDatabaseAndServerRepo implements Repository{
       try {
         activity =
         await restClient.add(activity).timeout(const Duration(seconds: 5));
+        log("Successfully added on server side");
         map[SportsActivityFields.id] = activity.id.toInt();
         await dtb.insert(dbName, map);
+        log("Inserting in local db");
 
         listState.add(activity);
       }
       on TimeoutException catch(_){
-        throw Exception("Cannot add element");
+        log("Error adding on server");
+        var id = await dtb.insert(dbName, map);
+        activity.id = BigInt.from(id);
+        listState.add(activity);
+        addSync(id, "sync");
       }
     }
     else{
+      log("No internet connection");
       var id = await dtb.insert(dbName, map);
       activity.id = BigInt.from(id);
       listState.add(activity);
@@ -142,42 +150,47 @@ class BuddyDatabaseAndServerRepo implements Repository{
     await dtb.insert(tableName, {SportsActivityFields.id: id});
   }
 
-  Future<List<SportsActivity>> readAllPlain() async{
-    if(_hasInternetConnection){
-      try {
-        return await restClient.readAll().timeout(const Duration(seconds: 5));
-      }
-      catch(e){
-        throw Exception("Cannot get the data");
-      }
-    }
-    throw Exception("Cannot get the data");
-  }
-
   Future<List<SportsActivity>> readAll({saveLocally: true}) async{
-    if(_hasInternetConnection){
-      try {
-        var elems = await restClient.readAll().timeout(const Duration(seconds: 5));
-        if(saveLocally) {
-          var dtb = await db.database;
-          dtb.delete(dbName);
-          elems.forEach((element) async {
-            try {
-              var body = element.mapToJson(SportsActivityFields.id, add: false);
-              await dtb.insert(dbName, body);
-            }
-            catch (e) {
 
-            }
-          });
-        }
-        return elems;
+    var dtb = await db.database;
+    if(_hasInternetConnection){
+      late List<SportsActivity> elems;
+      try {
+        elems = await restClient.readAll().timeout(const Duration(seconds: 5));
+        log("Getting all elements from server");
       }
       catch(e){
+        log("Error connection with server");
+        var el = await dtb.query(dbName);
+        var rez = el.map((e) => SportsActivity.fromJson(e, SportsActivityFields.id)).toList();
+        if(rez.isEmpty) {
+          throw Exception("Cannot get the data");
+        }
+        return rez;
+      }
+      if(saveLocally) {
+        dtb.delete(dbName);
+        elems.forEach((element) async {
+          try {
+            var body = element.mapToJson(SportsActivityFields.id, add: false);
+            await dtb.insert(dbName, body);
+          }
+          catch (e) {}
+        });
+        log("Synchronizing with local db");
+      }
+      return elems;
+    }
+    else{
+      log("Error connecting with server, getting from local db");
+      var el = await dtb.query(dbName);
+      var rez = el.map((e) => SportsActivity.fromJson(e, SportsActivityFields.id)).toList();
+      if(rez.isEmpty) {
         throw Exception("Cannot get the data");
       }
+      log("Retrieving successfully from local db");
+      return rez;
     }
-    throw Exception("Cannot get the data");
   }
 
   @override
@@ -185,12 +198,15 @@ class BuddyDatabaseAndServerRepo implements Repository{
     var dtb = await db.database;
     if(_hasInternetConnection){
       await restClient.delete(id);
+      log("Deleting on server side");
 
       dtb.delete(dbName, where: '${SportsActivityFields.id} = $id');
 
+      log("Deleting on local db");
       listState.removeWhere((element) => element.id == id);
     }
     else{
+      log("No internet connection");
       throw Exception("No internet connection");
       await dtb.delete(dbName, where: '${SportsActivityFields.id} = $id');
       listState.removeWhere((element) => element.id == id);
@@ -220,10 +236,12 @@ class BuddyDatabaseAndServerRepo implements Repository{
         }
         on TimeoutException catch (_) {}
       }
+      log("Adding element to server");
       await dtb.delete(
           dbName, where: '${SportsActivityFields.id} = ${BigInt.from(element)}');
       var body = activity.mapToJson(SportsActivityFields.id, add: false);
       await dtb.insert(dbName, body);
+      log("Adding element in local db");
       listState.removeWhere((el) => el.id.toInt() == element);
       listState.add(activity);
     }
@@ -240,6 +258,7 @@ class BuddyDatabaseAndServerRepo implements Repository{
         }
         on TimeoutException catch (_) {}
       }
+      log("Deleting element on server side");
     }
   }
 
@@ -255,6 +274,7 @@ class BuddyDatabaseAndServerRepo implements Repository{
         }
         on TimeoutException catch (_) {}
       }
+      log("Updating element on server side");
     }
   }
 
@@ -263,8 +283,10 @@ class BuddyDatabaseAndServerRepo implements Repository{
     var dtb = await db.database;
     if(_hasInternetConnection){
       await restClient.update(sportsActivity);
+      log("Successfully updating on server side");
       var whr = sportsActivity.mapToJson(SportsActivityFields.id, add: false);
       await dtb.update(dbName, whr, where: '${SportsActivityFields.id} = ${sportsActivity.id.toInt()}');
+      log("Sucessfully updating in local db");
 
       for (int i = 0; i < listState.length; i ++) {
         if(listState[i].id == sportsActivity.id){
@@ -278,7 +300,9 @@ class BuddyDatabaseAndServerRepo implements Repository{
       }
     }
     else{
+      log("No iternet connection");
       await dtb.update(dbName, sportsActivity.mapToJson(SportsActivityFields.id, add: false), where: '${SportsActivityFields.id} = ${sportsActivity.id}');
+      log("Successfully updating local db");
       addSync(sportsActivity.id.toInt(), "syncUpdate");
       for (int i = 0; i < listState.length; i ++) {
         if(listState[i].id == sportsActivity.id){
