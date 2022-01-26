@@ -6,112 +6,58 @@ class SportsActivityFields{
   static const String id = '_id';
   static const String idServer = 'id';
   static const String idType = 'INTEGER PRIMARY KEY';
-  static const String location = 'location';
-  static const String locationType = 'VARCHAR(100) NOT NULL';
-  static const String date = 'date';
-  static const String dateType = 'TEXT NOT NULL';
-  static const String closed = 'closed';
-  static const String closedType = 'BOOLEAN NOT NULL';
-  static const String type = 'type';
-  static const String typeType = 'TEXT NOT NULL';
+  static const String nume = 'nume';
+  static const String numeType = 'VARCHAR(100) NOT NULL';
+  static const String tip = 'tip';
+  static const String tipType = 'VARCHAR(100) NOT NULL';
+  static const String status = 'status';
+  static const String statusType = 'BOOLEAN NOT NULL';
+  static const String quantity = 'cantitate';
+  static const String quantityType = 'integer';
+  static const String pret= 'pret';
+  static const String pretType = 'integer';
+  static const String discount= 'discount';
+  static const String discountType = 'integer';
 }
 
 class SportsActivity{
   BigInt id;
-  String location;
-  DateTime date;
-  bool closed;
-  SportsType type;
+  String nume;
+  String tip;
+  bool status;
+  int discount;
+  int pret;
+  int cantitate;
 
   SportsActivity({
     required this.id,
-    required this.location,
-    required this.date,
-    required this.closed,
-    required this.type,
+    required this.nume,
+    required this.status,
+    required this.discount,
+    required this.pret,
+    required this.tip,
+    required this.cantitate,
   });
 
-  String get dateShort{
-    return date.toString().split(" ")[0];
-  }
-
-  static Color mapTypeToColor(SportsType type){
-    late Color col;
-    switch(type){
-      case SportsType.TABLE_TENNIS:
-        col = Colors.red;
-        break;
-      case SportsType.TENNIS:
-        col = Colors.green;
-        break;
-      default:
-        col = Colors.blue;
-    }
-    return col;
-  }
-
-  static String mapTypeToText(SportsType type){
-    late String col;
-    switch(type){
-      case SportsType.TABLE_TENNIS:
-        col = "TABLE_TENNIS";
-        break;
-      case SportsType.TENNIS:
-        col = "TENNIS";
-        break;
-      default:
-        col = "JOGGING";
-    }
-    return col;
-  }
-
-  static SportsType mapTextToType(String type){
-    switch(type){
-      case "TABLE_TENNIS":
-        return SportsType.TABLE_TENNIS;
-      case "TENNIS":
-        return SportsType.TENNIS;
-      default:
-        return SportsType.JOGGING;
-    }
-  }
-
-  Map<String, Object?> mapToJson({bool add = true}) => {
-      SportsActivityFields.id: add ? null : id.toInt(),
-      SportsActivityFields.location: location,
-      SportsActivityFields.type: mapTypeToText(type),
-      SportsActivityFields.closed: closed,
-      SportsActivityFields.date: date.toString().split(" ")[0],
+  Map<String, Object?> mapToJson(String idKey, {bool add = true}) => {
+      idKey: add ? idKey == SportsActivityFields.id ? null : -1 : id.toInt(),
+      SportsActivityFields.nume: nume,
+      SportsActivityFields.tip: tip,
+      SportsActivityFields.status: status,
+      SportsActivityFields.quantity: cantitate,
+      SportsActivityFields.pret: pret,
+      SportsActivityFields.discount: discount,
     };
 
-  Map<String, Object?> mapToJsonServer({bool add = true}) => {
-    SportsActivityFields.idServer: add ? null : id.toInt(),
-    SportsActivityFields.location: location,
-    SportsActivityFields.type: mapTypeToText(type),
-    SportsActivityFields.closed: closed,
-    SportsActivityFields.date: date.toString().split(" ")[0],
-  };
 
-
-  static SportsActivity fromJson(Map<String, Object?> map) =>
+  static SportsActivity fromJson(Map<String, Object?> map, String idKey) =>
       SportsActivity(
-        id: BigInt.from(map[SportsActivityFields.id] as int),
-        location: map[SportsActivityFields.location] as String,
-        closed: map[SportsActivityFields.closed] == 1,
-        date: DateTime.parse(map[SportsActivityFields.date] as String),
-        type: mapTextToType(map[SportsActivityFields.type] as String)
+        id: BigInt.from(map[idKey] as int),
+        nume: map[SportsActivityFields.nume] as String,
+        status: map[SportsActivityFields.status] == 1,
+        tip: map[SportsActivityFields.tip] as String,
+        cantitate: map[SportsActivityFields.quantity] as int,
+        pret: map[SportsActivityFields.pret] as int,
+        discount: map[SportsActivityFields.discount] as int
       );
-
-  static SportsActivity fromJsonServer(Map<String, Object?> map) =>
-      SportsActivity(
-          id: BigInt.from(map[SportsActivityFields.idServer] as int),
-          location: map[SportsActivityFields.location] as String,
-          closed: map[SportsActivityFields.closed] == 1,
-          date: DateTime.parse(map[SportsActivityFields.date] as String),
-          type: mapTextToType(map[SportsActivityFields.type] as String)
-      );
-}
-
-enum SportsType{
-  TABLE_TENNIS, TENNIS, JOGGING
 }

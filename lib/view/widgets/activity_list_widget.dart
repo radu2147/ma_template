@@ -40,10 +40,10 @@ class _SportsActivityListWidgetState extends State<SportsActivityListWidget> {
                     padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
                     child:
                       Text(
-                        SportsActivity.mapTypeToText(sa.type),
-                        style: TextStyle(
+                        sa.id.toString(),
+                        style: const TextStyle(
                           fontSize: 10.0,
-                          color: SportsActivity.mapTypeToColor(sa.type),
+                          color: Colors.red
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -53,7 +53,7 @@ class _SportsActivityListWidgetState extends State<SportsActivityListWidget> {
                       padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
                       child:
                         Text(
-                          sa.location,
+                          sa.nume,
                           style: const TextStyle(
                             fontSize: 25.0,
                             fontWeight: FontWeight.w600,
@@ -69,7 +69,7 @@ class _SportsActivityListWidgetState extends State<SportsActivityListWidget> {
                     padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
                     child:
                         Text(
-                          sa.date.toString(),
+                          sa.cantitate.toString(),
                           style: const TextStyle(
                             fontSize: 16.0,
                             fontWeight: FontWeight.w400,
@@ -78,12 +78,25 @@ class _SportsActivityListWidgetState extends State<SportsActivityListWidget> {
                           overflow: TextOverflow.ellipsis,
                         )
                     ),
-                  const Padding(
+                  Padding(
                       padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
                       child:
                       Text(
-                        "Hosted by Anonymous",
-                        style: TextStyle(
+                        sa.tip,
+                        style: const TextStyle(
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                  ),
+                  Padding(
+                      padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
+                      child:
+                      Text(
+                        sa.pret.toString(),
+                        style: const TextStyle(
                           fontSize: 16.0,
                           fontWeight: FontWeight.w400,
                         ),
@@ -125,15 +138,23 @@ class _SportsActivityListWidgetState extends State<SportsActivityListWidget> {
                         context, listen: false).deleteActivity(sa.id);
                     Navigator.pop(context, false);
                     if(Provider.of<SportsActivityViewModel>(
-                        context, listen: false).response.status == Status.ERROR)
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => AlertScreen(Provider.of<SportsActivityViewModel>(
-                          context, listen: false).response.message)));
+                        context, listen: false).response.status == Status.ERROR){
+                      _showErrorDialog(context, Provider.of<SportsActivityViewModel>(context, listen: false).response.message!);
+                    }
                   },
                 child: const Text("Delete")
               )
             ],
           ),
         ),
+      );
+    });
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(context: context, builder: (context){
+      return AlertDialog(
+        title: Text(message),
       );
     });
   }

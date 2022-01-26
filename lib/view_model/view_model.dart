@@ -8,6 +8,11 @@ import 'package:flutter/cupertino.dart';
 
 class SportsActivityViewModel with ChangeNotifier {
   ApiResponse _apiResponse = ApiResponse.initial('Empty data');
+  ApiResponse _addApiResponse = ApiResponse.initial('Empty data');
+  ApiResponse _updateApiResponse = ApiResponse.initial('Empty data');
+  ApiResponse _secondScreenApiResponse = ApiResponse.initial('Empty data');
+
+  Set<Observer> observers = {};
 
   late Repository repo;
 
@@ -27,6 +32,18 @@ class SportsActivityViewModel with ChangeNotifier {
     return _apiResponse;
   }
 
+  ApiResponse get secondScreenResponse {
+    return _secondScreenApiResponse;
+  }
+
+  ApiResponse get addApiResponse {
+    return _addApiResponse;
+  }
+
+  ApiResponse get updateApiResponse {
+    return _updateApiResponse;
+  }
+
   List<SportsActivity>? get listState{
     return repo.listState;
   }
@@ -35,17 +52,40 @@ class SportsActivityViewModel with ChangeNotifier {
     return _act;
   }
 
+  @override
+  void dispose(){
+    super.dispose();
+    repo.dispose();
+  }
+
   Future<void> fetchSportsActivityData() async {
+
     _apiResponse = ApiResponse.loading('Fetching artist data');
     notifyListeners();
     try {
       log("Getting all activities");
-      List<SportsActivity> list = await repo.readAll();
+      var list = await repo.readAll();
       repo.listState = list;
-      _apiResponse = ApiResponse.completed(list);
+      _apiResponse = ApiResponse.completed(repo.listState);
     } catch (e) {
       log("Error fetching from server");
       _apiResponse = ApiResponse.error(e.toString());
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> fetchDataSorted() async {
+    _secondScreenApiResponse = ApiResponse.loading('Fetching artist data');
+    notifyListeners();
+    try {
+      log("Getting sorted activities");
+      List<SportsActivity> list = await repo.readAll(saveLocally: false);
+      list.sort((a, b) => a.pret - b.pret);
+      _secondScreenApiResponse = ApiResponse.completed(list);
+    } catch (e) {
+      log("Error fetching from server");
+      _secondScreenApiResponse = ApiResponse.error(e.toString());
     }
     notifyListeners();
   }
@@ -66,16 +106,17 @@ class SportsActivityViewModel with ChangeNotifier {
   }
 
   Future<void> addActivity(SportsActivity el) async {
-    _apiResponse = ApiResponse.loading("Deleting activity");
+    _addApiResponse = ApiResponse.loading("Deleting activity");
     notifyListeners();
     try{
       log("Adding activity");
       await repo.add(el);
       _apiResponse = ApiResponse.completed(repo.listState);
+      _addApiResponse = ApiResponse.initial("Add api response");
     }
     catch(e){
       log("Error adding activity");
-      _apiResponse = ApiResponse.error(e.toString());
+      _addApiResponse = ApiResponse.error(e.toString());
     }
     notifyListeners();
   }
@@ -86,23 +127,30 @@ class SportsActivityViewModel with ChangeNotifier {
   }
 
   Future<void> updateActivity(SportsActivity sportsActivity) async {
-    _apiResponse = ApiResponse.loading("Deleting activity");
+    _updateApiResponse = ApiResponse.loading("Updating activity");
     notifyListeners();
     try{
       log("Updating activity");
       await repo.update(sportsActivity);
       _apiResponse = ApiResponse.completed(repo.listState);
+      _updateApiResponse = ApiResponse.initial("Updating");
     }
     catch(e){
       log("Error updating");
-    _apiResponse = ApiResponse.error(e.toString());
+    _updateApiResponse = ApiResponse.error(e.toString());
     }
     notifyListeners();
   }
 
-  void reset() {
-    log("Reseying");
-    _apiResponse = repo.listState.isEmpty ? ApiResponse.initial("Empty data") : ApiResponse.completed(repo.listState);
-    notifyListeners();
+  void update(String elem) {
+    for(var el in observers){
+      el.showSnackBar(elem);
+    }
   }
+
+
+}
+
+abstract class Observer{
+  void showSnackBar(String elem);
 }

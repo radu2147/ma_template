@@ -1,10 +1,13 @@
 import 'package:buddy_finder/model/activity.dart';
 import 'package:buddy_finder/model/api/api_response.dart';
+import 'package:buddy_finder/view/widgets/form_input_bool.dart';
+import 'package:buddy_finder/view/widgets/form_input_number.dart';
+import 'package:buddy_finder/view/widgets/form_input_string.dart';
+import 'package:buddy_finder/view/widgets/padding_widget.dart';
 import 'package:buddy_finder/view_model/view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 import 'alert.dart';
 
@@ -21,15 +24,108 @@ class DetailsScreen extends StatefulWidget{
 class _DetailsState extends State<DetailsScreen>{
 
   final SportsActivity _elem;
-  SportsType? type;
-  late String location;
-  late DateTime date;
+
+  String tip = "";
+  int discount = 0;
+  int pret = 0;
+  int quantity = 0;
+  String nume = "";
+  bool status = false;
+
   _DetailsState(this._elem){
-    type = _elem.type;
-    date = _elem.date;
-    location=  _elem.location;
+    quantity = _elem.cantitate;
+    pret = _elem.pret;
+    nume = _elem.nume;
+    status = _elem.status;
+    discount = _elem.discount;
+    tip = _elem.tip;
   }
 
+  Widget getBody(BuildContext context, ApiResponse apiResponse){
+    switch(apiResponse.status){
+      case Status.LOADING:
+        return Center(child: CircularProgressIndicator());
+      default:
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(25.0, 35.0, 25.0, 0),
+          child:
+          Column(
+              children: <Widget>[
+                Padding(
+                    padding: const EdgeInsets.fromLTRB(0,0, 0, 30),
+                    child:
+                    Row(
+                        children:const [
+                          Text("Add an activity", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30.0),)
+                        ])
+                ),
+
+                const PaddingWidget(text: "nume"),
+                FormInputString(binding: (e){
+                  setState(() {
+                    nume = e;
+                  });},
+                  text: "nume", initialValue: nume,),
+                const PaddingWidget(text: "tip"),
+                FormInputString(binding: (e){
+                  setState(() {
+                    tip = e;
+                  });}, text: "tip", initialValue: tip,),
+                const PaddingWidget(text: "quantity"),
+                FormInputNumber(binding: (e){
+                  setState(() {
+                    quantity = int.parse(e);
+                  });}, text: "quantity", initialValue: quantity,),
+                const PaddingWidget(text: "pret"),
+                FormInputNumber(binding: (e){
+                  setState(() {
+                    pret = int.parse(e);
+                  });}, text: "pret", initialValue: pret,),
+                const PaddingWidget(text: "discount"),
+                FormInputNumber(binding: (e){
+                  setState(() {
+                    discount = int.parse(e);
+                  });}, text: "discount", initialValue: discount,),
+                const PaddingWidget(text: "status"),
+                FormInputBool(binding: (e){
+                  setState(() {
+                    status = e;
+                  });}, text: "status", initialValue: status,),
+                Expanded(
+                    child:
+                    Row(
+                        children:[
+                          MaterialButton(onPressed: () async {
+                            setState(() {
+
+                            });
+                            await Provider.of<SportsActivityViewModel>(context, listen: false).addActivity(
+                                SportsActivity(id: BigInt.from(-1), nume: nume, status: status, discount: discount, pret: pret, cantitate: quantity, tip: tip)
+                            );
+                            if(Provider.of<SportsActivityViewModel>(context, listen: false).updateApiResponse.status != Status.ERROR){
+                              Navigator.pop(context);
+                            }
+                            else{
+                              _showDialog(context, Provider.of<SportsActivityViewModel>(context, listen: false).updateApiResponse.message!);
+                              setState(() {
+
+                              });
+                            }
+                          },
+                            color: Colors.deepPurple,
+                            child: const Text("UPDATE"),
+                            textColor: Colors.white,
+                            minWidth: MediaQuery.of(context).size.width - 50,
+                          )
+                        ]
+                    )
+                )
+
+              ]
+          ),
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,153 +137,15 @@ class _DetailsState extends State<DetailsScreen>{
               )
             ),
             body:
-
-              Padding(
-                padding: const EdgeInsets.fromLTRB(25.0, 35.0, 25.0, 0),
-                child:
-                Column(
-                  children: <Widget>[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(0,0, 0, 30),
-                          child:
-                            Row(
-                              children:const [
-                                Text("Update this activity", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30.0),)
-                              ])
-                        ),
-
-                        Padding(
-                            padding: const EdgeInsets.fromLTRB(0,0, 0, 15),
-                            child:
-                            Row(
-                              children: const [
-                                Text("Update location",
-                                  style: TextStyle(fontSize: 9.0),
-                                ),
-                              ],
-                            )
-                        ),
-                        Padding(
-                            padding: const EdgeInsets.fromLTRB(0,0, 0, 30),
-                            child:
-                            Row(
-                              children: [
-                                Expanded(
-                                    child:
-                                      TextFormField(
-                                        decoration: const InputDecoration(
-                                          contentPadding: EdgeInsets.all(5.0),
-                                          hintText: "Enter a location",
-                                        ),
-                                        initialValue: location,
-                                        onChanged: (e){
-                                          setState(() {
-                                            location = e;
-                                          });
-                                        },
-                                      )
-                                ),
-                              ],
-                            )
-                        ),
-                        Padding(
-                            padding: const EdgeInsets.fromLTRB(0,0, 0, 15),
-                            child:
-                            Row(
-                              children: const [
-                                Text("Update sport type",
-                                  style: TextStyle(fontSize: 9.0),
-                                ),
-                              ],
-                            )
-                        ),
-                        Padding(
-                            padding: const EdgeInsets.fromLTRB(0,0, 0, 30),
-                            child:
-                            Row(
-                                children: [
-                                  Expanded(
-                                    child:
-                            DropdownButton(
-                              value: type,
-                              items: SportsType.values.map((e) =>
-                                  DropdownMenuItem(
-                                      value: e,
-                                      child: Text(SportsActivity.mapTypeToText(e))
-                                  )).toList(),
-
-                              onChanged: (SportsType? e){
-                                setState(() {
-                                  type = e;
-                                });
-                              },
-
-                            )
-                           )]
-                            )
-
-                        ),
-                        Padding(
-                            padding: const EdgeInsets.fromLTRB(0,0, 0, 15),
-                            child:
-                            Row(
-                              children: const [
-                                Text("Update date",
-                                  style: TextStyle(fontSize: 9.0),
-                                ),
-                              ],
-                            )
-                        ),
-                    Padding(
-                        padding: const EdgeInsets.fromLTRB(0,0, 0, 30),
-                        child:
-                        Row(
-                          children: [
-                            Expanded(
-                                child:
-                                SfDateRangePicker(
-                                  initialDisplayDate: _elem.date,
-                                  onSelectionChanged: (e){
-                                    setState(() {
-                                      date = e.value;
-                                    });
-                                  },
-                                )
-                            ),
-                          ],
-                        )
-                    ),
-                    Expanded(
-                      child:
-                          Row(
-                            children:[
-                              MaterialButton(onPressed: () async {
-                                if(type == null){
-                                  Navigator.push(context, MaterialPageRoute(builder: (context) => AlertScreen(Provider.of<SportsActivityViewModel>(context, listen: false).response.message)));
-                                }
-                                await Provider.of<SportsActivityViewModel>(context, listen: false).updateActivity(
-                                    SportsActivity(id: _elem.id, location: location, date: date, closed: false, type: type! )
-                                );
-                                if(Provider.of<SportsActivityViewModel>(context, listen: false).response.status != Status.ERROR){
-                                  Navigator.pop(context);
-                                }
-                                else{
-                                  Navigator.push(context, MaterialPageRoute(builder: (context) => AlertScreen(Provider.of<SportsActivityViewModel>(context, listen: false).response.message)));
-                                }
-                              },
-                                color: Colors.deepPurple,
-                                child: const Text("UPDATE"),
-                                textColor: Colors.white,
-                                minWidth: MediaQuery.of(context).size.width - 50,
-                              )
-                            ]
-                          )
-                    )
-
-                          ]
-                      ),
-                    )
+              getBody(context, Provider.of<SportsActivityViewModel>(context, listen: false).updateApiResponse)
         );
+  }
+  void _showDialog(BuildContext context, String message) {
+    showDialog(context: context, builder: (context){
+      return AlertDialog(
+        title: Text(message),
+      );
+    });
   }
 
 }

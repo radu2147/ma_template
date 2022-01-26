@@ -16,7 +16,6 @@ class AlertScreen extends StatelessWidget{
         appBar: AppBar(
         title: const Text("BuddyFinder"),
     leading: IconButton(onPressed: () {
-      Provider.of<SportsActivityViewModel>(context, listen: false).reset();
 
       Navigator.pop(context); }, icon: const Icon(Icons.arrow_back),
     )

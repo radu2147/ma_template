@@ -17,21 +17,21 @@ class HomeScreen extends StatefulWidget{
 
 }
 
-class _HomeScreenState extends State<HomeScreen>{
+class _HomeScreenState extends State<HomeScreen> implements Observer{
 
 
   @override
   dispose(){
     super.dispose();
-    Provider.of<SportsActivityViewModel>(context, listen: false).dispose();
   }
 
-
   Widget getWidget(BuildContext context, ApiResponse apiResponse) {
-    List<SportsActivity>? mediaList = apiResponse.data as List<SportsActivity>?;
+    Provider.of<SportsActivityViewModel>(context, listen: false).observers.add(this);
+    List<SportsActivity>? mediaList = apiResponse.data;
+    print(apiResponse.status);
     switch (apiResponse.status) {
       case Status.LOADING:
-        return Center(child: CircularProgressIndicator());
+        return const Center(child: CircularProgressIndicator());
       case Status.ERROR:
         return RefreshIndicator(child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -96,6 +96,18 @@ class _HomeScreenState extends State<HomeScreen>{
               ),
         )
     );
+  }
+
+  @override
+  void showSnackBar(String elem) {
+    final snackBar = SnackBar(
+      content: Text("This item has been added recently: " + elem),
+      action: SnackBarAction(
+        label: 'Close',
+        onPressed: () {},
+      ),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
 }
